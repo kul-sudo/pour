@@ -106,14 +106,4 @@ impl Peer {
             },
         }
     }
-
-    pub fn send_to(&self, address: SocketAddr, data: Vec<u8>) {
-        if let Ok(mut stream) = TcpStream::connect(address) {
-            stream.write_all(&data).unwrap();
-
-            println!("Connected to the server!");
-        } else {
-            println!("Couldn't connect to server...");
-        }
-    }
 }

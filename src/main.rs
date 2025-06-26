@@ -3,9 +3,11 @@ mod mode;
 mod peer;
 
 use bincode::{Decode, Encode, config::standard, decode_from_slice, encode_to_vec};
+use consts::*;
 use peer::{Chunk, Config, Mode, Peer};
 use rand::{SeedableRng, rngs::SmallRng, seq::IteratorRandom};
 use std::{
+    collections::HashSet,
     fs::{read_to_string, write},
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
@@ -26,7 +28,7 @@ fn main() {
     let mut peer = Peer::new(config);
 
     match peer.mode {
-        Mode::Seeder(ref seeder) => {
+        Mode::Seeder(ref mut seeder) => {
             let listener = Arc::new(RwLock::new(TcpListener::bind(seeder.address).unwrap()));
             let lc = listener.clone();
             // spawn(move || {
@@ -44,20 +46,24 @@ fn main() {
                     .chunks
                     .iter()
                     .choose_multiple(&mut rng, node.contribution);
-                for chunk in random_chunks {
-                    let chunk_encoded = encode_to_vec(chunk, config).unwrap();
-                    peer.send_to(node.address, chunk_encoded);
+
+                for (index, chunk) in random_chunks {
+                    let chunk_encoded = encode_to_vec((index, chunk), config).unwrap();
+
+                    if let Ok(ref mut stream) = TcpStream::connect(node.address) {
+                        stream.write_all(&chunk_encoded).unwrap();
+                        seeder.nodes.insert(node.address, DEFAULT_RATING);
+                        seeder
+                            .distributed_storage
+                            .entry(*index)
+                            .and_modify(|contributors| {
+                                contributors.insert(node.address);
+                            })
+                            .or_insert(HashSet::from([node.address]));
+                    } else {
+                        println!("Couldn't connect to server...");
+                    }
                 }
-                // let mut encoder = ZlibEncoder::new(Vec::new(), CompressionOptions {
-                //     max_hash_checks: 32768,
-                //     lazy_if_less_than: 258,
-                //     matching_type: MatchingType::Lazy,
-                //     special: SpecialOptions::Normal
-                // });
-                // encoder.write_all(&chunk_encoded).expect("Write error!");
-                // let compressed_data = encoder.finish().expect("Failed to finish compression!");
-                // dbg!(compressed_data.len(), chunk_encoded.len());
-                // peer.send_to(node.address, chunk_encoded);
             }
             // });
         }
@@ -78,14 +84,14 @@ fn main() {
 
                 stream.write_all(&encoded).unwrap();
 
-                for stream1 in listener.incoming() {
+                for stream_incoming in listener.incoming() {
                     let mut buf = Vec::new();
 
-                    let len = stream1.unwrap().read_to_end(&mut buf).unwrap();
+                    let len = stream_incoming.unwrap().read_to_end(&mut buf).unwrap();
                     let slice = &buf[..len];
-                    let ((index, chunk), a): ((usize, Chunk), _) =
+                    let ((index, chunk), _): ((usize, Chunk), _) =
                         decode_from_slice(slice, config).unwrap();
-                    write(format!("share/test{}.webm", index), chunk.bytes.clone()).unwrap(); 
+                    write(format!("share/{}.webm", index), chunk.bytes.clone()).unwrap();
                     peer.chunks.insert(index, chunk);
                 }
 
