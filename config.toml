@@ -2,7 +2,7 @@ mode = "Node"
 [options]
 address = "127.0.0.1:8081"
 seeder_address = "127.0.0.1:8080"
-contribution = 5
+contribution = 500
 
 # mode = "Seeder"
 # [options]

@@ -6,7 +6,7 @@ use bincode::{Decode, Encode, config::standard, decode_from_slice, encode_to_vec
 use peer::{Chunk, Config, Mode, Peer};
 use rand::{SeedableRng, rngs::SmallRng, seq::IteratorRandom};
 use std::{
-    fs::read_to_string,
+    fs::{read_to_string, write},
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
     sync::{Arc, RwLock},
@@ -79,14 +79,13 @@ fn main() {
                 stream.write_all(&encoded).unwrap();
 
                 for stream1 in listener.incoming() {
-                    let mut buf = [0; 9000000];
+                    let mut buf = Vec::new();
 
-                    let len = stream1.unwrap().read(&mut buf).unwrap();
-                    dbg!(len);
+                    let len = stream1.unwrap().read_to_end(&mut buf).unwrap();
                     let slice = &buf[..len];
-                    let ((index, chunk), _): ((usize, Chunk), _) =
+                    let ((index, chunk), a): ((usize, Chunk), _) =
                         decode_from_slice(slice, config).unwrap();
-                    dbg!(chunk.hash.clone());
+                    write(format!("share/test{}.webm", index), chunk.bytes.clone()).unwrap(); 
                     peer.chunks.insert(index, chunk);
                 }
 

@@ -81,6 +81,17 @@ impl Peer {
 
                             let hash = Sha512::digest(&bytes)[..].to_vec();
 
+                            // chunks.insert(
+                            //     stem.to_string_lossy().parse::<usize>().unwrap(),
+                            //     bytes
+                            //         .chunks(SUBCHUNK_N)
+                            //         .map(|pieces| Chunk {
+                            //             bytes: pieces.iter().cloned().collect::<Vec<_>>(),
+                            //             hash: Sha512::digest(&bytes)[..].to_vec(),
+                            //         })
+                            //         .collect::<Vec<_>>(), // Chunk { bytes, hash },
+                            // );
+
                             chunks.insert(
                                 stem.to_string_lossy().parse::<usize>().unwrap(),
                                 Chunk { bytes, hash },
