@@ -7,7 +7,7 @@ use consts::*;
 use peer::{Chunk, Config, Mode, Peer};
 use rand::{SeedableRng, rngs::SmallRng, seq::IteratorRandom};
 use std::{
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     fs::{read_to_string, write},
     io::{Read, Write},
     net::{SocketAddr, TcpListener, TcpStream},
@@ -22,10 +22,22 @@ struct Join {
     address: SocketAddr,
 }
 
-fn main() {
-    let config: Config = from_str(&read_to_string("config.toml").unwrap()).unwrap();
+#[derive(Encode, Decode, PartialEq, Debug)]
+struct Retrieve {
+    chunk_index: usize,
+    address: SocketAddr,
+}
 
-    let mut peer = Peer::new(config);
+#[derive(Encode, Decode, PartialEq, Debug)]
+enum Packet {
+    Join(Join),
+    Retrieve(Retrieve),
+}
+
+fn main() {
+    let toml_config: Config = from_str(&read_to_string("config.toml").unwrap()).unwrap();
+
+    let mut peer = Peer::new(toml_config);
 
     match peer.mode {
         Mode::Seeder(ref mut seeder) => {
@@ -39,29 +51,48 @@ fn main() {
                 let mut buf = [0; 100];
                 let len = stream.unwrap().read(&mut buf).unwrap();
                 let slice = &buf[..len];
-                let (node, _): (Join, _) = decode_from_slice(slice, config).unwrap();
+                let (packet, _): (Packet, _) = decode_from_slice(slice, config).unwrap();
 
-                let mut rng = SmallRng::from_os_rng();
-                let random_chunks = peer
-                    .chunks
-                    .iter()
-                    .choose_multiple(&mut rng, node.contribution);
+                dbg!(&packet);
 
-                for (index, chunk) in random_chunks {
-                    let chunk_encoded = encode_to_vec((index, chunk), config).unwrap();
+                match packet {
+                    Packet::Join(join) => {
+                        let mut rng = SmallRng::from_os_rng();
+                        let random_chunks = peer
+                            .chunks
+                            .iter()
+                            .choose_multiple(&mut rng, join.contribution);
 
-                    if let Ok(ref mut stream) = TcpStream::connect(node.address) {
-                        stream.write_all(&chunk_encoded).unwrap();
-                        seeder.nodes.insert(node.address, DEFAULT_RATING);
-                        seeder
-                            .distributed_storage
-                            .entry(*index)
-                            .and_modify(|contributors| {
-                                contributors.insert(node.address);
-                            })
-                            .or_insert(HashSet::from([node.address]));
-                    } else {
-                        println!("Couldn't connect to server...");
+                        if let Ok(ref mut stream) = TcpStream::connect(join.address) {
+                            let chunk_encoded = encode_to_vec(&random_chunks, config).unwrap();
+
+                            stream.write_all(&chunk_encoded).unwrap();
+                            seeder.nodes.insert(join.address, DEFAULT_RATING);
+                            for (index, chunk) in random_chunks {
+                                seeder
+                                    .distributed_storage
+                                    .entry(*index)
+                                    .and_modify(|contributors| {
+                                        contributors.insert(join.address);
+                                    })
+                                    .or_insert(HashSet::from([join.address]));
+                            }
+                        } else {
+                            println!("Couldn't connect to server...");
+                        }
+                    }
+                    Packet::Retrieve(retrieve) => {
+                        let retrieved_chunk = peer.chunks.get(&retrieve.chunk_index);
+                        if let Ok(ref mut stream) = TcpStream::connect(retrieve.address) {
+                            let encoded = encode_to_vec(
+                                peer.chunks.get(&retrieve.chunk_index).unwrap(),
+                                config,
+                            )
+                            .unwrap();
+                            stream.write_all(&encoded).unwrap();
+                        } else {
+                            println!("Couldn't connect to server...");
+                        }
                     }
                 }
             }
@@ -74,30 +105,73 @@ fn main() {
                 let config = standard();
 
                 let encoded = encode_to_vec(
-                    &Join {
+                    Packet::Join(Join {
                         contribution: node.contribution,
                         address: node.address,
-                    },
+                    }),
                     config,
                 )
                 .unwrap();
 
                 stream.write_all(&encoded).unwrap();
 
-                for stream_incoming in listener.incoming() {
-                    let mut buf = Vec::new();
+                let (mut stream_incoming, _) = listener.accept().unwrap();
+                let mut buf = vec![];
 
-                    let len = stream_incoming.unwrap().read_to_end(&mut buf).unwrap();
-                    let slice = &buf[..len];
-                    let ((index, chunk), _): ((usize, Chunk), _) =
-                        decode_from_slice(slice, config).unwrap();
+                let len = stream_incoming.read_to_end(&mut buf).unwrap();
+                let slice = &buf[..len];
+                let (data, _): (Vec<(usize, Chunk)>, _) = decode_from_slice(slice, config).unwrap();
+                for (index, chunk) in data {
                     peer.chunks.insert(index, chunk);
                 }
-
-                println!("Connected to the server!");
-            } else {
-                println!("Couldn't connect to server...");
             }
+
+            // if let Ok(mut stream) = TcpStream::connect(node.seeder_address) {
+            //     let config = standard();
+            //
+            //     let mut needed_chunk_index = 0;
+            //     let mut buffer = VecDeque::with_capacity(BUFFER_SIZE);
+            //     // back => newest
+            //     while buffer.len() < BUFFER_SIZE {
+            //         dbg!(buffer.len());
+            //         match peer.chunks.get(&needed_chunk_index) {
+            //             Some(chunk) => {
+            //                 buffer.push_back(chunk.clone());
+            //                 needed_chunk_index += 1;
+            //             }
+            //             None => {
+            //                 // let packet_encoded = encode_to_vec(
+            //                 //     Packet::Retrieve(Retrieve {
+            //                 //         chunk_index: needed_chunk_index,
+            //                 //         address: node.address,
+            //                 //     }),
+            //                 //     config,
+            //                 // )
+            //                 // .unwrap();
+            //                 //
+            //                 // stream.write_all(&packet_encoded).unwrap();
+            //                 //
+            //                 // for stream_incoming in listener.incoming() {
+            //                 //     let mut buf = Vec::new();
+            //                 //
+            //                 //     let len = stream_incoming.unwrap().read_to_end(&mut buf).unwrap();
+            //                 //     let slice = &buf[..len];
+            //                 //     let (chunk, _): (Chunk, _) =
+            //                 //         decode_from_slice(slice, config).unwrap();
+            //                 //
+            //                 //     buffer.push_back(chunk.clone());
+            //                 //     needed_chunk_index += 1;
+            //                 // }
+            //             }
+            //         }
+            //     }
+            //
+            //     dbg!(buffer.len());
+            //
+            //     println!("Connected to the server!");
+            // } else {
+            //     println!("Couldn't connect to the server...");
+            // }
         }
     }
 }

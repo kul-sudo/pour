@@ -1,10 +1,10 @@
-mode = "Node"
-[options]
-address = "127.0.0.1:8081"
-seeder_address = "127.0.0.1:8080"
-contribution = 500
-
-# mode = "Seeder"
+# mode = "Node"
 # [options]
-# address = "127.0.0.1:8080"
-# file = "video.mp4"
+# address = "127.0.0.1:8081"
+# seeder_address = "127.0.0.1:8080"
+# contribution = 345345345
+
+mode = "Seeder"
+[options]
+address = "127.0.0.1:8080"
+file = "video.mp4"
