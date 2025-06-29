@@ -91,7 +91,6 @@ fn main() {
                     let slice = &buf[..len];
                     let ((index, chunk), _): ((usize, Chunk), _) =
                         decode_from_slice(slice, config).unwrap();
-                    write(format!("share/{}.webm", index), chunk.bytes.clone()).unwrap();
                     peer.chunks.insert(index, chunk);
                 }
 

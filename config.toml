@@ -7,4 +7,4 @@ contribution = 500
 # mode = "Seeder"
 # [options]
 # address = "127.0.0.1:8080"
-# file = "video.webm"
+# file = "video.mp4"

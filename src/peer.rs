@@ -23,6 +23,7 @@ pub enum Mode {
 pub struct Chunk {
     pub bytes: Vec<u8>,
     pub hash: Vec<u8>,
+    pub extension: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -52,6 +53,7 @@ impl Peer {
                         let dir = Path::new(SHARE_DIR).join(TMP_DIR);
                         create_dir(&dir).unwrap();
                         let file_name = file.file_name().unwrap();
+                        let extension = file.extension().unwrap().to_string_lossy().to_string();
 
                         Command::new("ffmpeg")
                             .current_dir(SHARE_DIR)
@@ -67,7 +69,7 @@ impl Peer {
                             .arg("segment")
                             .arg("-reset_timestamps")
                             .arg("1")
-                            .arg(Path::new(&TMP_DIR).join("%d.webm"))
+                            .arg(Path::new(&TMP_DIR).join(format!("%d.{}", extension)))
                             .output()
                             .unwrap();
 
@@ -77,7 +79,10 @@ impl Peer {
                         for chunk in &chunk_dir_read {
                             let chunk_path = chunk.as_ref().unwrap().path();
                             let stem = chunk_path.file_stem().unwrap();
-                            let bytes = read(&chunk_path).unwrap();
+                            let mut bytes = read(&chunk_path).unwrap();
+                            for byte in extension.as_bytes() {
+                                bytes.push(*byte);
+                            }
 
                             let hash = Sha512::digest(&bytes)[..].to_vec();
 
@@ -94,7 +99,11 @@ impl Peer {
 
                             chunks.insert(
                                 stem.to_string_lossy().parse::<usize>().unwrap(),
-                                Chunk { bytes, hash },
+                                Chunk {
+                                    bytes,
+                                    hash,
+                                    extension: extension.clone(),
+                                },
                             );
                         }
 
