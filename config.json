@@ -1,0 +1,11 @@
+{
+	"mode": "node",
+	"node": {
+		"address": ":8080",
+		"seeder": ":8081",
+		"contribution": 5
+	},
+	"seeder": {
+		"address": "localhost:8081"
+	}
+}
