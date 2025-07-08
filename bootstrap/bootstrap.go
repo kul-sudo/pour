@@ -11,6 +11,7 @@ const CONFIG_FILE = "config.json"
 
 type Config struct {
 	Mode string `json:"mode"`
+	Dashboard   string `json:"dashboard"`
 	Node struct {
 		Address     string `json:"address"`
 		Seeder      string `json:"seeder"`

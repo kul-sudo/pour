@@ -13,7 +13,7 @@ func Segmentation() {
 	err := os.Mkdir(SEGMENTS_DIR, 0755)
 	if err != nil {
 		fmt.Printf("failed to create dir for segments\n")
-		return
+		// return
 	}
 
 	cmd := exec.Command("ffmpeg", "-i", "rtmp://localhost:1935/live/playpath", "-c", "copy", "-f", "segment", "-segment_time", fmt.Sprintf("%d", SEGMENT_DURATION), "-reset_timestamps", "1", SEGMENTS_DIR + "/%d.mp4")

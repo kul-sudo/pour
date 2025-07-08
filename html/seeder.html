@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+</head>
+<body>
+	<h1>Running as seeder</h1>
+
+	<div class="container">
+		<div class="line"><span class="property">Contributors:</span><span id="contributors">{{.Contributors}}</span></div>
+		<span>Please keep in mind the number of contributors might be higher, since some inactive nodes may have not been discovered yet.</span>
+	</div>
+
+	<script>
+		const eventSrc = new EventSource(`http://{{.Dashboard}}/events`)
+
+		const contributors = document.getElementById("contributors")
+		eventSrc.addEventListener("update", event => {
+			contributors.textContent = event.data
+		})
+	</script>
+</body>
+<style>
+.property {
+	font-weight: bold
+}
+
+.container span {
+	display: block;
+}
+
+.line span {
+	display: inline-block;
+	padding-right: 5px;
+}
+</style>
+</html>

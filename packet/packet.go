@@ -4,19 +4,23 @@ import (
 	"encoding/gob"
 	"fmt"
 	"net"
-	"pour/seeder"
-	"sync"
 )
 
 type PacketType int
 
 const (
 	PacketChunk PacketType = iota
+	PacketPassChunk
 	PacketJoin
 )
 
 type Chunk struct {
 	Bytes []byte
+}
+
+type PassChunk struct {
+	Chunk Chunk
+	DestinationAddress string
 }
 
 type Join struct {
@@ -27,24 +31,22 @@ type Join struct {
 type Packet struct {
 	Type  PacketType
 	Chunk Chunk
+	PassChunk PassChunk
 	Join  Join
 }
 
-func HandleConnection(conn net.Conn, seeder *seeder.Seeder, wg *sync.WaitGroup) {
-	dec := gob.NewDecoder(conn)
-	packetReceived := Packet{}
-	err := dec.Decode(&packetReceived)
+func PassChunkToNode(data *PassChunk) {
+	conn, err := net.Dial("tcp", data.DestinationAddress)
 	if err != nil {
-		fmt.Printf("failed to decode packet, error %v\n", err)
+		fmt.Printf("failed to dial seeder %v\n", err)
 		return
 	}
 
-	switch packetReceived.Type {
-	case PacketJoin:
-		if packetReceived.Join.Contributor {
-			seeder.Contributors = append(seeder.Contributors, packetReceived.Join.Address)
-		}
+	packetSend := Packet{Type: PacketChunk, Chunk: Chunk{Bytes: data.Chunk.Bytes}}
+	encoder := gob.NewEncoder(conn)
+	err = encoder.Encode(packetSend)
+	if err != nil {
+		fmt.Printf("failed to send data to seeder\n")
+		return
 	}
-
-	wg.Done()
 }
