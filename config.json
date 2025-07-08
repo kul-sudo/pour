@@ -3,7 +3,7 @@
 	"node": {
 		"address": ":8080",
 		"seeder": ":8081",
-		"contribution": 5
+		"contributor": true
 	},
 	"seeder": {
 		"address": "localhost:8081"
