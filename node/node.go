@@ -17,7 +17,7 @@ func Setup(config *bootstrap.Config) {
 		return
 	}
 	
-	page := dashboard.Page { Dashboard: config.Dashboard  }
+	page := dashboard.Page { Dashboard: config.Dashboard }
 	go dashboard.ShowNodeInfo(&page)
 	
 	packetSend := packet.Packet{Type: packet.PacketJoin, Join: packet.Join{Contributor: true, Address: config.Node.Address}}

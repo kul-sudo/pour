@@ -1,5 +1,5 @@
 {
-	"mode": "seeder",
+	"mode": "node",
 	"dashboard": "localhost:8082",
 	"node": {
 		"address": "localhost:8080",
