@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"os"
 )
 
 func main() {
@@ -18,6 +19,8 @@ func main() {
 
 	// ffmpeg -i 19.mp4 -f segment -segment_time 10 -reset_timestamps 1 -c copy -segment_format_options movflags=frag_keyframe+empty_moov pour/chunks/%d.mp4
 	go func() {
+		lastNum := -1
+
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			files, _ := ioutil.ReadDir("chunks/")
 
@@ -33,10 +36,30 @@ func main() {
 				}
 			}
 
-			fmt.Println(maxFile)
-			maxFile = "2.mp4"
+				fmt.Println(maxNum)
 
-			http.ServeFile(w, r, filepath.Join("chunks", maxFile))
+			if lastNum == maxNum {
+				fmt.Println(5)
+				http.Error(w, "Not Found", http.StatusNotFound)
+			} else {
+				fmt.Println(maxNum)
+				lastNum = maxNum
+				fullName := filepath.Join("chunks", maxFile);
+				file, err := os.Open(fullName)
+				if err != nil {
+					http.Error(w, "File not found", http.StatusNotFound)
+					return
+				}
+				defer file.Close()
+
+				fileInfo, err := file.Stat()
+				if err != nil {
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+
+				http.ServeContent(w, r, fileInfo.Name(), fileInfo.ModTime(), file)
+			}
 		})
 		http.ListenAndServe("localhost:8080", nil)
 	}()
