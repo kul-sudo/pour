@@ -20,7 +20,7 @@ func Setup(config *bootstrap.Config) {
 	page := dashboard.Page { Dashboard: config.Dashboard }
 	go dashboard.ShowNodeInfo(&page)
 	
-	packetSend := packet.Packet{Type: packet.PacketJoin, Join: packet.Join{Contributor: true, Address: config.Node.Address}}
+	packetSend := packet.Packet{Type: packet.PacketJoin, Join: packet.Join{Address: config.Node.Address}}
 	encoder := gob.NewEncoder(conn)
 	err = encoder.Encode(packetSend)
 	if err != nil {
@@ -59,6 +59,8 @@ func HandleConnection(conn net.Conn, config *bootstrap.Config, wg *sync.WaitGrou
 	switch packetReceived.Type {
 	case packet.PacketPassChunk:
 		packet.PassChunkToNode(&packetReceived.PassChunk)
+	case packet.PacketChunk:
+		fmt.Println(packetReceived.Chunk.Bytes)			
 	}
 
 	wg.Done()

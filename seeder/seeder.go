@@ -9,20 +9,26 @@ import (
 	"encoding/gob"
 	"sync"
 	"fmt"
+	"strings"
+	"strconv"
+	"path/filepath"
+	"os"
+	"math/rand"
 )
 
 type Seeder struct {
-	Contributors []string
+	Nodes []string
 }
 
 func Setup(config *bootstrap.Config) {
 	go workers.Segmentation()
 
 	seeder := Seeder{make([]string, 0)}
+	go seeder.HandleNewChunks()
 
 	var wg sync.WaitGroup
 
-	page := dashboard.Page { Contributors: &seeder.Contributors, Dashboard: config.Dashboard  }
+	page := dashboard.Page { Nodes: &seeder.Nodes, Dashboard: config.Dashboard  }
 	go dashboard.ShowSeederInfo(&page)
 
 	ln, err := net.Listen("tcp", config.Seeder.Address)
@@ -42,6 +48,72 @@ func Setup(config *bootstrap.Config) {
 	}
 }
 
+func (seeder *Seeder) HandleNewChunks() {
+	lastNum := -1
+
+	for {
+		if len(seeder.Nodes) == 0 {
+			continue	
+		}
+
+		files, err := os.ReadDir(workers.SEGMENTS_DIR)
+		if err != nil {
+			fmt.Printf("failed to read the segments dir")
+			return
+		}
+
+		maxNum := -1
+		maxFile := ""
+		for _, f := range files {
+			filename := strings.TrimSuffix(f.Name(), ".mp4")
+			if num, err := strconv.Atoi(filename); err == nil {
+				if num > maxNum {
+					maxNum = num
+					maxFile = f.Name()
+				}
+			}
+		}
+
+		if lastNum == maxNum {
+			// http.Error(w, "Not Found", http.StatusNotFound)
+		} else {
+			lastNum = maxNum
+			fullName := filepath.Join(workers.SEGMENTS_DIR, maxFile);
+			file, err := os.Open(fullName)
+			if err != nil {
+				fmt.Printf("failed to open the file")
+				return
+			}
+			defer file.Close()
+
+			// if err != nil {
+			// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
+			// 	return
+			// }
+			randomNode := seeder.Nodes[rand.Intn(len(seeder.Nodes))]
+			bytes, err := os.ReadFile(fullName)
+			if err != nil {
+				fmt.Printf("failed to read the file")
+				return
+			}
+			packetSend := packet.Packet{Type: packet.PacketChunk, Chunk: packet.Chunk{Bytes: bytes}}
+	
+			conn, err := net.Dial("tcp", randomNode)
+			if err != nil {
+				fmt.Printf("failed to dial seeder %v\n", err)
+				return
+			}
+			
+			encoder := gob.NewEncoder(conn)
+			err = encoder.Encode(packetSend)
+			if err != nil {
+				fmt.Printf("failed to send data to seeder\n")
+				return
+			}
+		}
+	}
+}
+
 func (seeder *Seeder) HandleConnection(conn net.Conn, wg *sync.WaitGroup) {
 	dec := gob.NewDecoder(conn)
 	packetReceived := packet.Packet{}
@@ -53,9 +125,7 @@ func (seeder *Seeder) HandleConnection(conn net.Conn, wg *sync.WaitGroup) {
 
 	switch packetReceived.Type {
 	case packet.PacketJoin:
-		if packetReceived.Join.Contributor {
-			seeder.Contributors = append(seeder.Contributors, packetReceived.Join.Address)
-		}
+		seeder.Nodes = append(seeder.Nodes, packetReceived.Join.Address)
 	}
 
 	wg.Done()

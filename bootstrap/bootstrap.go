@@ -15,7 +15,6 @@ type Config struct {
 	Node struct {
 		Address     string `json:"address"`
 		Seeder      string `json:"seeder"`
-		Contributor bool   `json:"contributor"`
 	} `json:"node"`
 	Seeder struct {
 		Address string `json:"address"`

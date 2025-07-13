@@ -8,7 +8,7 @@ import (
 )
 
 type Page struct {
-	Contributors *[]string
+	Nodes *[]string
 	Dashboard string
 }
 
@@ -24,7 +24,7 @@ func ShowSeederInfo(page *Page) {
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Fprintf(w, "event:update\ndata:%s\n\n", fmt.Sprint(*page.Contributors))
+				fmt.Fprintf(w, "event:update\ndata:%s\n\n", fmt.Sprint(*page.Nodes))
 
 				rc.Flush()
 			}

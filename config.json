@@ -3,8 +3,7 @@
 	"dashboard": "localhost:8082",
 	"node": {
 		"address": "localhost:8080",
-		"seeder": "localhost:8081",
-		"contributor": true
+		"seeder": "localhost:8081"
 	},
 	"seeder": {
 		"address": "localhost:8081"

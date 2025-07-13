@@ -24,7 +24,6 @@ type PassChunk struct {
 }
 
 type Join struct {
-	Contributor bool
 	Address string
 }
 

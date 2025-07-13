@@ -6,16 +6,16 @@
 	<h1>Running as seeder</h1>
 
 	<div class="container">
-		<div class="line"><span class="property">Contributors:</span><span id="contributors">{{.Contributors}}</span></div>
-		<span>Please keep in mind the number of contributors might be higher, since some inactive nodes may have not been discovered yet.</span>
+		<div class="line"><span class="property">Nodes:</span><span id="nodes">{{.Nodes}}</span></div>
+		<span>Please keep in mind the number of nodes might be higher, since some inactive peers may have not been discovered yet.</span>
 	</div>
 
 	<script>
 		const eventSrc = new EventSource(`http://{{.Dashboard}}/events`)
 
-		const contributors = document.getElementById("contributors")
+		const nodes = document.getElementById("nodes")
 		eventSrc.addEventListener("update", event => {
-			contributors.textContent = event.data
+			nodes.textContent = event.data
 		})
 	</script>
 </body>

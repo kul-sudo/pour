@@ -16,7 +16,7 @@ func Segmentation() {
 		// return
 	}
 
-	cmd := exec.Command("ffmpeg", "-i", "rtmp://localhost:1935/live/playpath", "-c", "copy", "-f", "segment", "-segment_time", fmt.Sprintf("%d", SEGMENT_DURATION), "-reset_timestamps", "1", "-segment_format_options", "movflags=frag_keyframe+empty_moov+default_base_moof", SEGMENTS_DIR + "/%d.mp4")
+	cmd := exec.Command("ffmpeg", "-i", "rtmp://localhost:1935/live/playpath", "-c", "copy", "-f", "segment", "-segment_time", fmt.Sprintf("%d", SEGMENT_DURATION), "-reset_timestamps", "1", "-segment_format_options", "movflags=frag_keyframe+empty_moov", SEGMENTS_DIR + "/%d.mp4")
 	err = cmd.Run()
 	if err != nil {
 		fmt.Printf("failed to run segmentation process\n")
