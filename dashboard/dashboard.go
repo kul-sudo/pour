@@ -5,10 +5,12 @@ import (
 	"net/http"
 	"fmt"
 	"time"
+	"bytes"
 )
 
 type Page struct {
 	Nodes *[]string
+	LatestChunk *[]byte
 	Dashboard string
 }
 
@@ -30,19 +32,23 @@ func ShowSeederInfo(page *Page) {
 			}
 		}
 	})
-	// http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
-	// 	// t, err := template.ParseFiles("html/seeder.html")
-	// 	// if err != nil {
-	// 	// 	fmt.Printf("failed to parse seeder dashboard html")
-	// 	// 	return
-	// 	// }
-	// 	// t.Execute(w, page)
-	// })
+	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		t, err := template.ParseFiles("html/seeder.html")
+		if err != nil {
+			fmt.Printf("failed to parse seeder dashboard html")
+			return
+		}
+		t.Execute(w, page)
+	})
 
-	// http.ListenAndServe(page.Dashboard, nil)
+	http.ListenAndServe(page.Dashboard, nil)
 }
 
 func ShowNodeInfo(page *Page) {
+	http.HandleFunc("/chunk", func(w http.ResponseWriter, r *http.Request) {
+		reader := bytes.NewReader(*page.LatestChunk)
+		http.ServeContent(w, r, "video.mp4", time.Now(), reader)
+	})
 	http.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		t, err := template.ParseFiles("html/node.html")
 		if err != nil {
@@ -51,7 +57,5 @@ func ShowNodeInfo(page *Page) {
 		}
 		t.Execute(w, page)
 	})
-	fs := http.FileServer(http.Dir("/home/user/pour/chunks"))
-	http.Handle("/chunks/", http.StripPrefix("/chunks", fs))
 	http.ListenAndServe(page.Dashboard, nil)
 }

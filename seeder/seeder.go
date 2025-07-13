@@ -63,54 +63,54 @@ func (seeder *Seeder) HandleNewChunks() {
 		}
 
 		maxNum := -1
-		maxFile := ""
 		for _, f := range files {
 			filename := strings.TrimSuffix(f.Name(), ".mp4")
 			if num, err := strconv.Atoi(filename); err == nil {
 				if num > maxNum {
 					maxNum = num
-					maxFile = f.Name()
 				}
 			}
 		}
 
-		if lastNum == maxNum {
-			// http.Error(w, "Not Found", http.StatusNotFound)
-		} else {
-			lastNum = maxNum
-			fullName := filepath.Join(workers.SEGMENTS_DIR, maxFile);
-			file, err := os.Open(fullName)
-			if err != nil {
-				fmt.Printf("failed to open the file")
-				return
-			}
-			defer file.Close()
+		maxNum -= 1
+		maxNum = 5
 
-			// if err != nil {
-			// 	http.Error(w, "Internal server error", http.StatusInternalServerError)
-			// 	return
-			// }
-			randomNode := seeder.Nodes[rand.Intn(len(seeder.Nodes))]
-			bytes, err := os.ReadFile(fullName)
-			if err != nil {
-				fmt.Printf("failed to read the file")
-				return
+		if maxNum >= 0 {
+			if lastNum != maxNum {
+				lastNum = maxNum
+				fullName := filepath.Join(workers.SEGMENTS_DIR, fmt.Sprintf("%d.mp4", maxNum));
+				file, err := os.Open(fullName)
+				defer file.Close()
+				if err != nil {
+					fmt.Printf("failed to open the file")
+					return
+				}
+
+				randomNode := seeder.Nodes[rand.Intn(len(seeder.Nodes))]
+				bytes, err := os.ReadFile(fullName)
+				if err != nil {
+					fmt.Printf("failed to read the file")
+					return
+				}
+
+				packetSend := packet.Packet{Type: packet.PacketChunk, Chunk: packet.Chunk{Bytes: bytes}}
+
+				conn, err := net.Dial("tcp", randomNode)
+				if err != nil {
+					fmt.Printf("failed to dial seeder %v\n", err)
+					return
+				}
+
+				encoder := gob.NewEncoder(conn)
+				err = encoder.Encode(packetSend)
+				if err != nil {
+					fmt.Printf("failed to send data to seeder\n")
+					return
+				}
 			}
-			packetSend := packet.Packet{Type: packet.PacketChunk, Chunk: packet.Chunk{Bytes: bytes}}
-	
-			conn, err := net.Dial("tcp", randomNode)
-			if err != nil {
-				fmt.Printf("failed to dial seeder %v\n", err)
-				return
-			}
-			
-			encoder := gob.NewEncoder(conn)
-			err = encoder.Encode(packetSend)
-			if err != nil {
-				fmt.Printf("failed to send data to seeder\n")
-				return
-			}
+
 		}
+
 	}
 }
 

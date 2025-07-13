@@ -15,15 +15,10 @@
 					const sourceBuffer = mediaSource.addSourceBuffer("video/mp4");
 					sourceBuffer.mode = 'sequence';
 
-					while (true) {
-						const response = await fetch("http://localhost:8080/?test=" + Math.random())
+					const response = await fetch("http://{{.Dashboard}}/chunk?chunk=" + Math.random())
 
-						if (response.status != 404) {
-							let arrayBuffer = await response.arrayBuffer()
-							sourceBuffer.appendBuffer(arrayBuffer)
-							break
-						}
-					}
+					let arrayBuffer = await response.arrayBuffer()
+					sourceBuffer.appendBuffer(arrayBuffer)
 
 					sourceBuffer.addEventListener("updateend", () => {
 						mediaSource.endOfStream();

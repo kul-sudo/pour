@@ -10,14 +10,20 @@ import (
 	"sync"
 )
 
+type Node struct {
+	LatestChunk []byte
+}
+
 func Setup(config *bootstrap.Config) {
+	node := Node{}
+
 	conn, err := net.Dial("tcp", config.Node.Seeder)
 	if err != nil {
 		fmt.Printf("failed to dial seeder %v\n", err)
 		return
 	}
 	
-	page := dashboard.Page { Dashboard: config.Dashboard }
+	page := dashboard.Page { Dashboard: config.Dashboard, LatestChunk: &node.LatestChunk }
 	go dashboard.ShowNodeInfo(&page)
 	
 	packetSend := packet.Packet{Type: packet.PacketJoin, Join: packet.Join{Address: config.Node.Address}}
@@ -43,11 +49,11 @@ func Setup(config *bootstrap.Config) {
 		}
 
 		wg.Add(1)
-		go HandleConnection(conn, config, &wg)
+		go node.HandleConnection(conn, config, &wg)
 	}
 }
 
-func HandleConnection(conn net.Conn, config *bootstrap.Config, wg *sync.WaitGroup) {
+func (node *Node) HandleConnection(conn net.Conn, config *bootstrap.Config, wg *sync.WaitGroup) {
 	dec := gob.NewDecoder(conn)
 	packetReceived := packet.Packet{}
 	err := dec.Decode(&packetReceived)
@@ -60,7 +66,7 @@ func HandleConnection(conn net.Conn, config *bootstrap.Config, wg *sync.WaitGrou
 	case packet.PacketPassChunk:
 		packet.PassChunkToNode(&packetReceived.PassChunk)
 	case packet.PacketChunk:
-		fmt.Println(packetReceived.Chunk.Bytes)			
+		node.LatestChunk = packetReceived.Chunk.Bytes
 	}
 
 	wg.Done()

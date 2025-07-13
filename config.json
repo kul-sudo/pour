@@ -1,6 +1,6 @@
 {
 	"mode": "node",
-	"dashboard": "localhost:8082",
+	"dashboard": "localhost:8083",
 	"node": {
 		"address": "localhost:8080",
 		"seeder": "localhost:8081"
